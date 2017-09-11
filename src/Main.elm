@@ -33,72 +33,83 @@ delay time msg =
 
 
 
--- T B a z b
--- where
--- T _ a z b = ins s
--- ins s@(T B a y b)
--- 	| x<y = balance (ins a) y b
--- 	| x>y = balance a y (ins b)
--- 	| otherwise = s
--- ins s@(T R a y b)
--- 	| x<y = T R (ins a) y b
--- 	| x>y = T R a y (ins b)
--- 	| otherwise = s
+blacken : Tree comparable -> Tree comparable
+blacken tree =
+    case tree of
+        Node _ l v r ->
+            Node Black l v r
 
+        EmptyTree ->
+            EmptyTree
+
+                
+{- Insertion and membership test as by Okasaki -}
+-- insert :: Ord a => a -> RB a -> RB a
+-- insert x s =
+-- 	T B a z b
+-- 	where
+-- 	T _ a z b = ins s
+-- 	ins E = T R E x E
+-- 	ins s@(T B a y b)
+-- 		| x<y = balance (ins a) y b
+-- 		| x>y = balance a y (ins b)
+-- 		| otherwise = s
+-- 	ins s@(T R a y b)
+-- 		| x<y = T R (ins a) y b
+-- 		| x>y = T R a y (ins b)
+-- 		| otherwise = s
 
 insertTree : Tree comparable -> comparable -> Tree comparable
 insertTree tree val =
     case tree of
         EmptyTree ->
-            Node Black EmptyTree val EmptyTree
-
-        Node Red left nodeVal right ->
-            if val < nodeVal then
-                balance (insertTree left val) nodeVal right
-            else if val > nodeVal then
-                balance left nodeVal (insertTree right val)
-            else
-                tree
+            Node Red EmptyTree val EmptyTree
 
         Node Black left nodeVal right ->
-            if val < nodeVal then
-                Node Red (insertTree left val) nodeVal right
-            else if val > nodeVal then
-                Node Red left nodeVal (insertTree right val)
-            else
-                tree
+            blacken <|
+                if val < nodeVal then
+                    balance (insertTree left val) nodeVal right
+                else if val > nodeVal then
+                    balance left nodeVal (insertTree right val)
+                else
+                    tree
+
+        Node Red left nodeVal right ->
+            blacken <|
+                if val < nodeVal then
+                    Node Red (insertTree left val) nodeVal right
+                else if val > nodeVal then
+                    Node Red left nodeVal (insertTree right val)
+                else
+                    tree
 
 
 balance : Tree comparable -> comparable -> Tree comparable -> Tree comparable
 balance left val right =
-    let
-        eeee =
-            Debug.log "l,r" ( left, right )
-    in
-        case ( left, right ) of
-            -- balance (T R a x b) y (T R c z d) = T R (T B a x b) y (T B c z d)
-            ( Node Red a x b, Node Red c z d ) ->
-                Debug.log "a" <| Node Red (Node Black a x b) val (Node Black c z d)
+    case ( left, right ) of
+        -- balance (T R a x b) y (T R c z d) = T R (T B a x b) y (T B c z d)
+        ( Node Red a x b, Node Red c z d ) ->
+            Node Red (Node Black a x b) val (Node Black c z d)
 
-            -- balance (T R (T R a x b) y c) z d = T R (T B a x b) y (T B c z d)
-            ( Node Red (Node Red a x b) y c, _ ) ->
-                Debug.log "b" <| Node Red (Node Black a x b) y (Node Black c val right)
+        -- balance (T R (T R a x b) y c) z d = T R (T B a x b) y (T B c z d)
+        ( Node Red (Node Red a x b) y c, _ ) ->
+            Node Red (Node Black a x b) y (Node Black c val right)
 
-            -- balance (T R a x (T R b y c)) z d = T R (T B a x b) y (T B c z d)
-            ( Node Red a x (Node Red b y c), _ ) ->
-                Debug.log "c" <| Node Red (Node Black a x b) y (Node Black c val right)
+        -- balance (T R a x (T R b y c)) z d = T R (T B a x b) y (T B c z d)
+        ( Node Red a x (Node Red b y c), _ ) ->
+            Node Red (Node Black a x b) y (Node Black c val right)
 
-            -- balance a x (T R b y (T R c z d)) = T R (T B a x b) y (T B c z d)
-            ( _, Node Red b y (Node Red c z d) ) ->
-                Debug.log "d" <| Node Red (Node Black left val b) y (Node Black c z d)
+        -- balance a x (T R b y (T R c z d)) = T R (T B a x b) y (T B c z d)
+        ( _, Node Red b y (Node Red c z d) ) ->
+            Node Red (Node Black left val b) y (Node Black c z d)
 
-            -- balance a x (T R (T R b y c) z d) = T R (T B a x b) y (T B c z d)
-            ( _, Node Red (Node Red b y c) z d ) ->
-                Debug.log "e" <| Node Red (Node Black left val b) y (Node Black c z d)
+        -- balance a x (T R (T R b y c) z d) = T R (T B a x b) y (T B c z d)
+        ( _, Node Red (Node Red b y c) z d ) ->
+            Node Red (Node Black left val b) y (Node Black c z d)
 
-            -- balance a x b = T B a x b
-            ( l, r ) ->
-                Debug.log "anything" <| Node Red l val r
+        -- balance a x b = T B a x b
+        ( l, r ) ->
+            Node Black l val r
 
 
 generator : Random.Generator Int
