@@ -32,7 +32,6 @@ delay time msg =
         |> Task.perform (always msg)
 
 
-
 blacken : Tree comparable -> Tree comparable
 blacken tree =
     case tree of
@@ -42,7 +41,8 @@ blacken tree =
         EmptyTree ->
             EmptyTree
 
-                
+
+
 {- Insertion and membership test as by Okasaki -}
 -- insert :: Ord a => a -> RB a -> RB a
 -- insert x s =
@@ -59,62 +59,69 @@ blacken tree =
 -- 		| x>y = T R a y (ins b)
 -- 		| otherwise = s
 
+
 insertTree : Tree comparable -> comparable -> Tree comparable
-insertTree tree val =
-    case tree of
-        EmptyTree ->
-            Node Red EmptyTree val EmptyTree
+insertTree s val =
+    let
+        ins : Tree comparable -> Tree comparable
+        ins tree =
+            case tree of
+                EmptyTree ->
+                    Node Red EmptyTree val EmptyTree
 
-        Node Black left nodeVal right ->
-            blacken <|
-                if val < nodeVal then
-                    balance (insertTree left val) nodeVal right
-                else if val > nodeVal then
-                    balance left nodeVal (insertTree right val)
-                else
-                    tree
+                Node Black left nodeVal right ->
+                    if val < nodeVal then
+                        balance (ins left) nodeVal right
+                    else if val > nodeVal then
+                        balance left nodeVal (ins right)
+                    else
+                        tree
 
-        Node Red left nodeVal right ->
-            blacken <|
-                if val < nodeVal then
-                    Node Red (insertTree left val) nodeVal right
-                else if val > nodeVal then
-                    Node Red left nodeVal (insertTree right val)
-                else
-                    tree
+                Node Red left nodeVal right ->
+                    if val < nodeVal then
+                        Node Red (ins left) nodeVal right
+                    else if val > nodeVal then
+                        Node Red left nodeVal (ins right)
+                    else
+                        tree
+    in
+        blacken <| ins s
 
 
 balance : Tree comparable -> comparable -> Tree comparable -> Tree comparable
 balance left val right =
-    case ( left, right ) of
+    case ( left, val, right ) of
+        -- BOTH RED
         -- balance (T R a x b) y (T R c z d) = T R (T B a x b) y (T B c z d)
-        ( Node Red a x b, Node Red c z d ) ->
-            Node Red (Node Black a x b) val (Node Black c z d)
+        ( Node Red a x b, y, Node Red c z d ) ->
+            Node Red (Node Black a x b) y (Node Black c z d)
 
+        -- DOUBLE RED LEFT
         -- balance (T R (T R a x b) y c) z d = T R (T B a x b) y (T B c z d)
-        ( Node Red (Node Red a x b) y c, _ ) ->
-            Node Red (Node Black a x b) y (Node Black c val right)
+        ( Node Red (Node Red a x b) y c, z, d ) ->
+            Node Red (Node Black a x b) y (Node Black c z d)
 
         -- balance (T R a x (T R b y c)) z d = T R (T B a x b) y (T B c z d)
-        ( Node Red a x (Node Red b y c), _ ) ->
-            Node Red (Node Black a x b) y (Node Black c val right)
+        ( Node Red a x (Node Red b y c), z, d ) ->
+            Node Red (Node Black a x b) y (Node Black c z d)
 
+        -- DOUBLE RED RIGHT
         -- balance a x (T R b y (T R c z d)) = T R (T B a x b) y (T B c z d)
-        ( _, Node Red b y (Node Red c z d) ) ->
-            Node Red (Node Black left val b) y (Node Black c z d)
+        ( a, x, Node Red b y (Node Red c z d) ) ->
+            Node Red (Node Black a x b) y (Node Black c z d)
 
         -- balance a x (T R (T R b y c) z d) = T R (T B a x b) y (T B c z d)
-        ( _, Node Red (Node Red b y c) z d ) ->
-            Node Red (Node Black left val b) y (Node Black c z d)
+        ( a, x, Node Red (Node Red b y c) z d ) ->
+            Node Red (Node Black a x b) y (Node Black c z d)
 
         -- balance a x b = T B a x b
-        ( l, r ) ->
-            Node Black l val r
+        ( a, x, b ) ->
+            Node Black a x b
 
 
 generator : Random.Generator Int
 generator =
-    Random.int 0 100
+    Random.int -1000 1000
 
 
 generateRandom : Cmd Msg
@@ -142,7 +149,7 @@ update msg model =
     case msg of
         InsertNumber n ->
             { model | tree = insertTree model.tree n }
-                ! [ delay 250 GenerateNumber
+                ! [ delay 25 GenerateNumber
                   ]
 
         GenerateNumber ->
@@ -166,7 +173,7 @@ viewTree tree px py depth =
             toFloat depth + 1
 
         d =
-            round <| 100 / (fd ^ 2) * 1.2 + 5
+            round <| 300 / (fd ^ 1.5)
 
         ny =
             py + 50
@@ -221,13 +228,14 @@ viewTree tree px py depth =
                         ]
                         []
                     , text_
-                        [ SvgAttributes.transform <| "translate(" ++ (toString <| px - 4) ++ "," ++ (toString <| py + 4) ++ ")"
-                        , SvgAttributes.style <|
-                            "font-size:8px; font-family: sans-serif;"
-                                ++ if color == Red then
-                                    "fill: black"
-                                   else
-                                    "fill: white"
+                        [ SvgAttributes.transform <|
+                            "translate("
+                                ++ (toString px)
+                                ++ ","
+                                ++ (toString <| py + 20)
+                                ++ ")"
+                        , SvgAttributes.style
+                            "font-size:12px; font-family: sans-serif; text-anchor: middle;fill: black"
                         ]
                         [ text <| toString val ]
                     , viewTree left lx ny (depth + 1)
@@ -238,8 +246,8 @@ viewTree tree px py depth =
 view : Model -> Html Msg
 view model =
     div []
-        [ Svg.svg [ SvgAttributes.width "800", SvgAttributes.height "800" ]
-            [ viewTree model.tree 400 10 0
+        [ Svg.svg [ SvgAttributes.width "1400", SvgAttributes.height "800" ]
+            [ viewTree model.tree 700 10 0
             ]
         ]
 
