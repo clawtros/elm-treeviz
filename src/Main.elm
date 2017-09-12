@@ -5,7 +5,7 @@ import Random
 import Process
 import Task
 import Time
-import Svg exposing (Svg, circle, g, text_, line)
+import Svg exposing (Svg, circle, g, text_, line, rect)
 import Svg.Attributes as SvgAttributes
 
 
@@ -167,16 +167,16 @@ viewTree : Tree comparable -> Int -> Int -> Int -> Svg.Svg Msg
 viewTree tree px py depth =
     let
         radius =
-            "8"
+            toString <| max 2 <| 16 - (round <| (toFloat depth) * 1.5)
 
         fd =
             toFloat depth + 1
 
         d =
-            round <| 300 / (fd ^ 1.5)
+            round <| 300 / (fd ^ 1.6)
 
         ny =
-            py + 50
+            py + 60
 
         rx =
             px + d
@@ -195,7 +195,13 @@ viewTree tree px py depth =
     in
         case tree of
             EmptyTree ->
-                text ""
+                rect
+                    [ SvgAttributes.x <| toString px
+                    , SvgAttributes.y <| toString py
+                    , SvgAttributes.rx "20"
+                    , SvgAttributes.ry "20"
+                    ]
+                    []
 
             Node color left val right ->
                 g []
@@ -220,11 +226,11 @@ viewTree tree px py depth =
                         , SvgAttributes.cx <| toString px
                         , SvgAttributes.cy <| toString py
                         , SvgAttributes.style <|
-                            "stroke: black;"
+                            "stroke: black; fill:"
                                 ++ if color == Red then
-                                    "fill: red; color: black"
+                                    "red"
                                    else
-                                    "fill: black; color: white"
+                                    "black"
                         ]
                         []
                     , text_
@@ -232,10 +238,12 @@ viewTree tree px py depth =
                             "translate("
                                 ++ (toString px)
                                 ++ ","
-                                ++ (toString <| py + 20)
+                                ++ (toString <| py + 30 - (2 * depth))
                                 ++ ")"
-                        , SvgAttributes.style
-                            "font-size:12px; font-family: sans-serif; text-anchor: middle;fill: black"
+                        , SvgAttributes.style <|
+                            "font-size:"
+                                ++ (toString <| 16 - depth)
+                                ++ "px; font-family: sans-serif; text-anchor: middle;fill: black"
                         ]
                         [ text <| toString val ]
                     , viewTree left lx ny (depth + 1)
@@ -246,8 +254,8 @@ viewTree tree px py depth =
 view : Model -> Html Msg
 view model =
     div []
-        [ Svg.svg [ SvgAttributes.width "1400", SvgAttributes.height "800" ]
-            [ viewTree model.tree 700 10 0
+        [ Svg.svg [ SvgAttributes.width "100%", SvgAttributes.viewBox "0 0 1200 800" ]
+            [ viewTree model.tree 600 30 0
             ]
         ]
 
