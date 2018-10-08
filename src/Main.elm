@@ -144,7 +144,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         InsertNumber n ->
-            ( { model | tree = insertTree model.tree n  }
+            ( { model | tree = insertTree model.tree n }
             , delay 100 GenerateNumber
             )
 
@@ -155,16 +155,11 @@ update msg model =
             ( model, Cmd.none )
 
 
-stringFromFloatTuple : ( Float, Float ) -> String
-stringFromFloatTuple ( a, b ) =
-    "(" ++ String.fromFloat a ++ "," ++ String.fromFloat b ++ " )"
-
-
 
 ---- VIEW ----
 
 
-viewTree : Tree comparable -> Int -> Int -> Int -> List (String, Svg.Svg Msg)
+viewTree : Tree comparable -> Int -> Int -> Int -> List ( String, Svg.Svg Msg )
 viewTree tree px py depth =
     let
         radius =
@@ -186,33 +181,38 @@ viewTree tree px py depth =
             px - d
 
         slx =
-            String.fromInt lx
+            String.fromInt <| lx - px
 
         srx =
-            String.fromInt rx
+            String.fromInt <| rx - px
 
         sny =
-            String.fromInt ny
-
-        
+            String.fromInt <| ny - py
     in
         case tree of
             EmptyTree ->
-                [("", Svg.text "")]
+                [ ( "", Svg.text "" ) ]
 
             Node color left val right ->
-                (Debug.toString val, g []
+                ( Debug.toString val
+                , g
+                    [ SvgAttributes.style <| "transform: translate("
+                        ++ String.fromInt px
+                        ++ "px,"
+                        ++ String.fromInt py
+                        ++ "px)"
+                    ]
                     [ line
-                        [ SvgAttributes.x1 <| String.fromInt px
-                        , SvgAttributes.y1 <| String.fromInt py
+                        [ SvgAttributes.x1 "0"
+                        , SvgAttributes.y1 "0"
                         , SvgAttributes.x2 slx
                         , SvgAttributes.y2 sny
                         , SvgAttributes.style "stroke: rgb(128,128,128); stroke-width: 1"
                         ]
                         []
                     , line
-                        [ SvgAttributes.x1 <| String.fromInt px
-                        , SvgAttributes.y1 <| String.fromInt py
+                        [ SvgAttributes.x1 "0"
+                        , SvgAttributes.y1 "0"
                         , SvgAttributes.x2 srx
                         , SvgAttributes.y2 sny
                         , SvgAttributes.style "stroke: rgb(64,64,64); stroke-width: 1"
@@ -220,8 +220,8 @@ viewTree tree px py depth =
                         []
                     , circle
                         [ SvgAttributes.r <| String.fromInt radius
-                        , SvgAttributes.cx <| String.fromInt px
-                        , SvgAttributes.cy <| String.fromInt py
+                        , SvgAttributes.cx "0"
+                        , SvgAttributes.cy "0"
                         , SvgAttributes.style <|
                             "stroke: black; fill:"
                                 ++ if color == Red then
@@ -232,10 +232,8 @@ viewTree tree px py depth =
                         []
                     , text_
                         [ SvgAttributes.transform <|
-                            "translate("
-                                ++ (String.fromInt px)
-                                ++ ","
-                                ++ (String.fromInt <| py + 30 - (2 * depth))
+                            "translate(0,"
+                                ++ (String.fromInt <| 30 - (2 * depth))
                                 ++ ")"
                         , SvgAttributes.style <|
                             "font-size:"
@@ -243,22 +241,25 @@ viewTree tree px py depth =
                                 ++ "px; font-family: sans-serif; text-anchor: middle;fill: black"
                         ]
                         [ text <| Debug.toString val ]
-                    ]) :: 
-                    (viewTree left lx ny (depth + 1) ++ 
-                    viewTree right rx ny (depth + 1))
+                    ]
+                )
+                    :: (viewTree left lx ny (depth + 1)
+                            ++ viewTree right rx ny (depth + 1)
+                       )
 
 
 view : Model -> Html Msg
 view model =
     div []
-        [ Html.node "style" [] [ text <| "svg g { transition: transform 0.25s; }" ]
+        [ Html.node "style" [] [ text <| "svg g { transition: transform 0.1s; }" ]
         , Svg.svg [ SvgAttributes.width "100%", SvgAttributes.viewBox "0 0 1200 800" ]
             [ Svg.Keyed.node "g" [] <| viewTree model.tree 600 30 0
             ]
         ]
 
 
-type alias Flags = {}
+type alias Flags =
+    {}
 
 
 main : Program Flags Model Msg
