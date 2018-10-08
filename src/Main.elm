@@ -117,7 +117,7 @@ balance left val right =
 
 generator : Random.Generator Int
 generator =
-    Random.int -100 100
+    Random.int -100000 100000
 
 
 generateRandom : Cmd Msg
@@ -251,7 +251,7 @@ viewTree tree px py depth =
 view : Model -> Html Msg
 view model =
     div []
-        [ Html.node "style" [] [ text <| "svg g { transition: transform 0.1s; }" ]
+        [ Html.node "style" [] [ text <| "svg g { transition: transform 0.1s; } svg circle { transition: fill 0.2s}" ]
         , Svg.svg [ SvgAttributes.width "100%", SvgAttributes.viewBox "0 0 1200 800" ]
             [ Svg.Keyed.node "g" [] <| viewTree model.tree 600 30 0
             ]
