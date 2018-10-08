@@ -31,6 +31,11 @@ type alias Model =
     { tree : Tree Int }
 
 
+stringify : Int -> String
+stringify =
+    String.fromInt
+
+
 delay : Float -> msg -> Cmd msg
 delay time msg =
     Process.sleep time
@@ -159,7 +164,7 @@ update msg model =
 ---- VIEW ----
 
 
-viewTree : Tree comparable -> Int -> Int -> Int -> List ( String, Svg.Svg Msg )
+viewTree : Tree Int -> Int -> Int -> Int -> List ( String, Svg.Svg Msg )
 viewTree tree px py depth =
     let
         radius =
@@ -175,7 +180,7 @@ viewTree tree px py depth =
             toFloat depth * 0.05
 
         ny =
-            (round (toFloat py + 60 - (60 * dsc))) 
+            (round (toFloat py + 60 * (1 - dsc)))
 
         rx =
             px + d
@@ -188,7 +193,7 @@ viewTree tree px py depth =
 
         srx =
             String.fromInt <| rx - px
-                
+
         sny =
             String.fromInt <| ny - py
     in
@@ -197,13 +202,16 @@ viewTree tree px py depth =
                 [ ( "", Svg.text "" ) ]
 
             Node color left val right ->
-                ( Debug.toString val
+                ( stringify val
                 , g
-                    [ SvgAttributes.style <| "transform: translate("
-                        ++ String.fromInt px
-                        ++ "px,"
-                        ++ String.fromInt py
-                        ++ "px) scale("++ (String.fromFloat <| 1 - dsc) ++")"
+                    [ SvgAttributes.style <|
+                        "transform: translate("
+                            ++ String.fromInt px
+                            ++ "px,"
+                            ++ String.fromInt py
+                            ++ "px) scale("
+                            ++ (String.fromFloat <| 1 - dsc)
+                            ++ ")"
                     ]
                     [ line
                         [ SvgAttributes.x1 "0"
@@ -243,7 +251,7 @@ viewTree tree px py depth =
                                 ++ (String.fromInt <| 16 - depth)
                                 ++ "px; font-family: sans-serif; text-anchor: middle;fill: black"
                         ]
-                        [ text <| Debug.toString val ]
+                        [ text <| stringify val ]
                     ]
                 )
                     :: (viewTree left lx ny (depth + 1)
@@ -254,7 +262,7 @@ viewTree tree px py depth =
 view : Model -> Html Msg
 view model =
     div []
-        [ Html.node "style" [] [ text <| "svg g { transition: transform 1s; } svg circle { transition: fill 1s}" ]
+        [ Html.node "style" [] [ text <| "svg g { transition: transform 1s; transform-origin: top left;} svg circle { transition: fill 1s}" ]
         , Svg.svg [ SvgAttributes.width "100%", SvgAttributes.viewBox "0 0 1200 800" ]
             [ Svg.Keyed.node "g" [] <| viewTree model.tree 600 30 0
             ]
