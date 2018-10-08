@@ -145,7 +145,7 @@ update msg model =
     case msg of
         InsertNumber n ->
             ( { model | tree = insertTree model.tree n }
-            , delay 100 GenerateNumber
+            , delay 250 GenerateNumber
             )
 
         GenerateNumber ->
@@ -171,8 +171,11 @@ viewTree tree px py depth =
         d =
             round <| 300 / (fd ^ 1.6)
 
+        dsc =
+            toFloat depth * 0.05
+
         ny =
-            py + 60
+            (round (toFloat py + 60 - (60 * dsc))) 
 
         rx =
             px + d
@@ -185,7 +188,7 @@ viewTree tree px py depth =
 
         srx =
             String.fromInt <| rx - px
-
+                
         sny =
             String.fromInt <| ny - py
     in
@@ -200,7 +203,7 @@ viewTree tree px py depth =
                         ++ String.fromInt px
                         ++ "px,"
                         ++ String.fromInt py
-                        ++ "px)"
+                        ++ "px) scale("++ (String.fromFloat <| 1 - dsc) ++")"
                     ]
                     [ line
                         [ SvgAttributes.x1 "0"
@@ -251,7 +254,7 @@ viewTree tree px py depth =
 view : Model -> Html Msg
 view model =
     div []
-        [ Html.node "style" [] [ text <| "svg g { transition: transform 0.1s; } svg circle { transition: fill 0.2s}" ]
+        [ Html.node "style" [] [ text <| "svg g { transition: transform 1s; } svg circle { transition: fill 1s}" ]
         , Svg.svg [ SvgAttributes.width "100%", SvgAttributes.viewBox "0 0 1200 800" ]
             [ Svg.Keyed.node "g" [] <| viewTree model.tree 600 30 0
             ]
