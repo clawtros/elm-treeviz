@@ -1,12 +1,14 @@
 module Main exposing (..)
 
-import Html exposing (Html, text, div, img)
+import Html exposing (Html, text, div)
+import Html.Attributes as HA
 import Random
 import Process
 import Task
 import Time
 import Svg exposing (Svg, circle, g, text_, line, rect)
 import Svg.Attributes as SvgAttributes
+import String
 
 
 ---- MODEL ----
@@ -15,7 +17,7 @@ import Svg.Attributes as SvgAttributes
 type Color
     = Red
     | Black
-
+    | BlackBlack
 
 type Tree comparable
     = EmptyTree
@@ -23,7 +25,7 @@ type Tree comparable
 
 
 type alias Model =
-    { tree : Tree Int }
+    { tree : Tree Int, last: Int }
 
 
 delay : Time.Time -> msg -> Cmd msg
@@ -40,6 +42,16 @@ blacken tree =
 
         EmptyTree ->
             EmptyTree
+
+
+flatten : Tree comparable -> List comparable
+flatten tree =
+    case tree of
+        EmptyTree ->
+            []
+
+        Node _ left val right ->
+            flatten left ++ [ val ] ++ flatten right
 
 
 
@@ -88,6 +100,11 @@ insertTree s val =
         blacken <| ins s
 
 
+batchInsert : Tree comparable -> List comparable -> Tree comparable
+batchInsert t l =
+    List.foldr (\a b -> insertTree b a) t l
+            
+            
 balance : Tree comparable -> comparable -> Tree comparable -> Tree comparable
 balance left val right =
     case ( left, val, right ) of
@@ -121,7 +138,7 @@ balance left val right =
 
 generator : Random.Generator Int
 generator =
-    Random.int -1000 1000
+    Random.int -10000 10000
 
 
 generateRandom : Cmd Msg
@@ -131,7 +148,7 @@ generateRandom =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { tree = EmptyTree }, delay 10 GenerateNumber )
+    ( { tree = EmptyTree, last = 0 }, generateRandom )
 
 
 
@@ -148,8 +165,8 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         InsertNumber n ->
-            { model | tree = insertTree model.tree n }
-                ! [ delay 25 GenerateNumber
+            { model | tree = batchInsert model.tree <| List.range (model.last) (model.last + 2), last = model.last + 2 }
+                ! [ delay 100 GenerateNumber
                   ]
 
         GenerateNumber ->
@@ -167,7 +184,7 @@ viewTree : Tree comparable -> Int -> Int -> Int -> Svg.Svg Msg
 viewTree tree px py depth =
     let
         radius =
-            toString <| max 2 <| 16 - (round <| (toFloat depth) * 1.5)
+            max 2 <| 16 - (round <| (toFloat depth) * 1.5)
 
         fd =
             toFloat depth + 1
@@ -196,10 +213,11 @@ viewTree tree px py depth =
         case tree of
             EmptyTree ->
                 rect
-                    [ SvgAttributes.x <| toString px
-                    , SvgAttributes.y <| toString py
-                    , SvgAttributes.rx "20"
-                    , SvgAttributes.ry "20"
+                    [ SvgAttributes.x <| toString <| px - radius
+                    , SvgAttributes.y <| toString <| py - radius
+                    , SvgAttributes.width <| toString <| radius * 2
+                    , SvgAttributes.height <| toString <| radius * 2
+                    , SvgAttributes.style "fill: #222"
                     ]
                     []
 
@@ -222,7 +240,7 @@ viewTree tree px py depth =
                         ]
                         []
                     , circle
-                        [ SvgAttributes.r radius
+                        [ SvgAttributes.r <| toString radius
                         , SvgAttributes.cx <| toString px
                         , SvgAttributes.cy <| toString py
                         , SvgAttributes.style <|
@@ -254,7 +272,19 @@ viewTree tree px py depth =
 view : Model -> Html Msg
 view model =
     div []
-        [ Svg.svg [ SvgAttributes.width "100%", SvgAttributes.viewBox "0 0 1200 800" ]
+        [ div
+            [ HA.style
+                [ ( "position", "fixed" )
+                , ( "bottom", "0" )
+                ]
+            ]
+            [ -- model.tree
+              --   |> flatten
+              --   |> List.map toString
+              --   |> String.join " "
+              --   |> text
+            ]
+        , Svg.svg [ SvgAttributes.width "100%", SvgAttributes.viewBox "0 0 1200 800" ]
             [ viewTree model.tree 600 30 0
             ]
         ]
