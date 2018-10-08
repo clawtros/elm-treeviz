@@ -1,5 +1,6 @@
 module Main exposing (..)
 
+import Browser exposing (element)
 import Html exposing (Html, text, div)
 import Html.Attributes as HA
 import Random
@@ -19,16 +20,17 @@ type Color
     | Black
     | BlackBlack
 
+
 type Tree comparable
     = EmptyTree
     | Node Color (Tree comparable) comparable (Tree comparable)
 
 
 type alias Model =
-    { tree : Tree Int, last: Int }
+    { tree : Tree Float, last : Int }
 
 
-delay : Time.Time -> msg -> Cmd msg
+delay : Float -> msg -> Cmd msg
 delay time msg =
     Process.sleep time
         |> Task.perform (always msg)
@@ -96,6 +98,9 @@ insertTree s val =
                         Node Red left nodeVal (ins right)
                     else
                         tree
+
+                Node BlackBlack _ _ _ ->
+                    tree
     in
         blacken <| ins s
 
@@ -103,8 +108,8 @@ insertTree s val =
 batchInsert : Tree comparable -> List comparable -> Tree comparable
 batchInsert t l =
     List.foldr (\a b -> insertTree b a) t l
-            
-            
+
+
 balance : Tree comparable -> comparable -> Tree comparable -> Tree comparable
 balance left val right =
     case ( left, val, right ) of
@@ -136,9 +141,9 @@ balance left val right =
             Node Black a x b
 
 
-generator : Random.Generator Int
+generator : Random.Generator Float
 generator =
-    Random.int -10000 10000
+    Random.float -1 1
 
 
 generateRandom : Cmd Msg
@@ -157,7 +162,7 @@ init =
 
 type Msg
     = NoOp
-    | InsertNumber Int
+    | InsertNumber Float
     | GenerateNumber
 
 
@@ -165,15 +170,20 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         InsertNumber n ->
-            { model | tree = batchInsert model.tree <| List.range (model.last) (model.last + 2), last = model.last + 2 }
-                ! [ delay 100 GenerateNumber
-                  ]
+            ( { model | tree = insertTree model.tree n  }
+            , delay 100 GenerateNumber
+            )
 
         GenerateNumber ->
-            model ! [ generateRandom ]
+            ( model, generateRandom )
 
         NoOp ->
             ( model, Cmd.none )
+
+
+stringFromFloatTuple : ( Float, Float ) -> String
+stringFromFloatTuple ( a, b ) =
+    "(" ++ String.fromFloat a ++ "," ++ String.fromFloat b ++ " )"
 
 
 
@@ -202,21 +212,21 @@ viewTree tree px py depth =
             px - d
 
         slx =
-            toString lx
+            String.fromInt lx
 
         srx =
-            toString rx
+            String.fromInt rx
 
         sny =
-            toString ny
+            String.fromInt ny
     in
         case tree of
             EmptyTree ->
                 rect
-                    [ SvgAttributes.x <| toString <| px - radius
-                    , SvgAttributes.y <| toString <| py - radius
-                    , SvgAttributes.width <| toString <| radius * 2
-                    , SvgAttributes.height <| toString <| radius * 2
+                    [ SvgAttributes.x <| String.fromInt <| px - radius
+                    , SvgAttributes.y <| String.fromInt <| py - radius
+                    , SvgAttributes.width <| String.fromInt <| radius * 2
+                    , SvgAttributes.height <| String.fromInt <| radius * 2
                     , SvgAttributes.style "fill: #222"
                     ]
                     []
@@ -224,25 +234,25 @@ viewTree tree px py depth =
             Node color left val right ->
                 g []
                     [ line
-                        [ SvgAttributes.x1 <| toString px
-                        , SvgAttributes.y1 <| toString py
+                        [ SvgAttributes.x1 <| String.fromInt px
+                        , SvgAttributes.y1 <| String.fromInt py
                         , SvgAttributes.x2 slx
                         , SvgAttributes.y2 sny
                         , SvgAttributes.style "stroke: rgb(128,128,128); stroke-width: 1"
                         ]
                         []
                     , line
-                        [ SvgAttributes.x1 <| toString px
-                        , SvgAttributes.y1 <| toString py
+                        [ SvgAttributes.x1 <| String.fromInt px
+                        , SvgAttributes.y1 <| String.fromInt py
                         , SvgAttributes.x2 srx
                         , SvgAttributes.y2 sny
                         , SvgAttributes.style "stroke: rgb(64,64,64); stroke-width: 1"
                         ]
                         []
                     , circle
-                        [ SvgAttributes.r <| toString radius
-                        , SvgAttributes.cx <| toString px
-                        , SvgAttributes.cy <| toString py
+                        [ SvgAttributes.r <| String.fromInt radius
+                        , SvgAttributes.cx <| String.fromInt px
+                        , SvgAttributes.cy <| String.fromInt py
                         , SvgAttributes.style <|
                             "stroke: black; fill:"
                                 ++ if color == Red then
@@ -254,16 +264,16 @@ viewTree tree px py depth =
                     , text_
                         [ SvgAttributes.transform <|
                             "translate("
-                                ++ (toString px)
+                                ++ (String.fromInt px)
                                 ++ ","
-                                ++ (toString <| py + 30 - (2 * depth))
+                                ++ (String.fromInt <| py + 30 - (2 * depth))
                                 ++ ")"
                         , SvgAttributes.style <|
                             "font-size:"
-                                ++ (toString <| 16 - depth)
+                                ++ (String.fromInt <| 16 - depth)
                                 ++ "px; font-family: sans-serif; text-anchor: middle;fill: black"
                         ]
-                        [ text <| toString val ]
+                        [ text <| Debug.toString val ]
                     , viewTree left lx ny (depth + 1)
                     , viewTree right rx ny (depth + 1)
                     ]
@@ -273,16 +283,14 @@ view : Model -> Html Msg
 view model =
     div []
         [ div
-            [ HA.style
-                [ ( "position", "fixed" )
-                , ( "bottom", "0" )
-                ]
+            [ HA.style "position" "fixed"
+            , HA.style "bottom" "0"
             ]
-            [ -- model.tree
-              --   |> flatten
-              --   |> List.map toString
-              --   |> String.join " "
-              --   |> text
+            [-- model.tree
+             --   |> flatten
+             --   |> List.map toString
+             --   |> String.join " "
+             --   |> text
             ]
         , Svg.svg [ SvgAttributes.width "100%", SvgAttributes.viewBox "0 0 1200 800" ]
             [ viewTree model.tree 600 30 0
@@ -290,15 +298,14 @@ view model =
         ]
 
 
+type alias Flags = {}
 
----- PROGRAM ----
 
-
-main : Program Never Model Msg
+main : Program Flags Model Msg
 main =
-    Html.program
+    element
         { view = view
-        , init = init
+        , init = always init
         , update = update
         , subscriptions = always Sub.none
         }
