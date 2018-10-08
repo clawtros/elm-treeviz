@@ -8,6 +8,7 @@ import Process
 import Task
 import Time
 import Svg exposing (Svg, circle, g, text_, line, rect)
+import Svg.Keyed
 import Svg.Attributes as SvgAttributes
 import String
 
@@ -27,7 +28,7 @@ type Tree comparable
 
 
 type alias Model =
-    { tree : Tree Float, last : Int }
+    { tree : Tree Int }
 
 
 delay : Float -> msg -> Cmd msg
@@ -54,24 +55,6 @@ flatten tree =
 
         Node _ left val right ->
             flatten left ++ [ val ] ++ flatten right
-
-
-
-{- Insertion and membership test as by Okasaki -}
--- insert :: Ord a => a -> RB a -> RB a
--- insert x s =
--- 	T B a z b
--- 	where
--- 	T _ a z b = ins s
--- 	ins E = T R E x E
--- 	ins s@(T B a y b)
--- 		| x<y = balance (ins a) y b
--- 		| x>y = balance a y (ins b)
--- 		| otherwise = s
--- 	ins s@(T R a y b)
--- 		| x<y = T R (ins a) y b
--- 		| x>y = T R a y (ins b)
--- 		| otherwise = s
 
 
 insertTree : Tree comparable -> comparable -> Tree comparable
@@ -113,37 +96,28 @@ batchInsert t l =
 balance : Tree comparable -> comparable -> Tree comparable -> Tree comparable
 balance left val right =
     case ( left, val, right ) of
-        -- BOTH RED
-        -- balance (T R a x b) y (T R c z d) = T R (T B a x b) y (T B c z d)
         ( Node Red a x b, y, Node Red c z d ) ->
             Node Red (Node Black a x b) y (Node Black c z d)
 
-        -- DOUBLE RED LEFT
-        -- balance (T R (T R a x b) y c) z d = T R (T B a x b) y (T B c z d)
         ( Node Red (Node Red a x b) y c, z, d ) ->
             Node Red (Node Black a x b) y (Node Black c z d)
 
-        -- balance (T R a x (T R b y c)) z d = T R (T B a x b) y (T B c z d)
         ( Node Red a x (Node Red b y c), z, d ) ->
             Node Red (Node Black a x b) y (Node Black c z d)
 
-        -- DOUBLE RED RIGHT
-        -- balance a x (T R b y (T R c z d)) = T R (T B a x b) y (T B c z d)
         ( a, x, Node Red b y (Node Red c z d) ) ->
             Node Red (Node Black a x b) y (Node Black c z d)
 
-        -- balance a x (T R (T R b y c) z d) = T R (T B a x b) y (T B c z d)
         ( a, x, Node Red (Node Red b y c) z d ) ->
             Node Red (Node Black a x b) y (Node Black c z d)
 
-        -- balance a x b = T B a x b
         ( a, x, b ) ->
             Node Black a x b
 
 
-generator : Random.Generator Float
+generator : Random.Generator Int
 generator =
-    Random.float -1 1
+    Random.int -100 100
 
 
 generateRandom : Cmd Msg
@@ -153,7 +127,7 @@ generateRandom =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { tree = EmptyTree, last = 0 }, generateRandom )
+    ( { tree = EmptyTree }, generateRandom )
 
 
 
@@ -162,7 +136,7 @@ init =
 
 type Msg
     = NoOp
-    | InsertNumber Float
+    | InsertNumber Int
     | GenerateNumber
 
 
@@ -190,7 +164,7 @@ stringFromFloatTuple ( a, b ) =
 ---- VIEW ----
 
 
-viewTree : Tree comparable -> Int -> Int -> Int -> Svg.Svg Msg
+viewTree : Tree comparable -> Int -> Int -> Int -> List (String, Svg.Svg Msg)
 viewTree tree px py depth =
     let
         radius =
@@ -219,20 +193,15 @@ viewTree tree px py depth =
 
         sny =
             String.fromInt ny
+
+        
     in
         case tree of
             EmptyTree ->
-                rect
-                    [ SvgAttributes.x <| String.fromInt <| px - radius
-                    , SvgAttributes.y <| String.fromInt <| py - radius
-                    , SvgAttributes.width <| String.fromInt <| radius * 2
-                    , SvgAttributes.height <| String.fromInt <| radius * 2
-                    , SvgAttributes.style "fill: #222"
-                    ]
-                    []
+                [("", Svg.text "")]
 
             Node color left val right ->
-                g []
+                (Debug.toString val, g []
                     [ line
                         [ SvgAttributes.x1 <| String.fromInt px
                         , SvgAttributes.y1 <| String.fromInt py
@@ -274,26 +243,17 @@ viewTree tree px py depth =
                                 ++ "px; font-family: sans-serif; text-anchor: middle;fill: black"
                         ]
                         [ text <| Debug.toString val ]
-                    , viewTree left lx ny (depth + 1)
-                    , viewTree right rx ny (depth + 1)
-                    ]
+                    ]) :: 
+                    (viewTree left lx ny (depth + 1) ++ 
+                    viewTree right rx ny (depth + 1))
 
 
 view : Model -> Html Msg
 view model =
     div []
-        [ div
-            [ HA.style "position" "fixed"
-            , HA.style "bottom" "0"
-            ]
-            [-- model.tree
-             --   |> flatten
-             --   |> List.map toString
-             --   |> String.join " "
-             --   |> text
-            ]
+        [ Html.node "style" [] [ text <| "svg g { transition: transform 0.25s; }" ]
         , Svg.svg [ SvgAttributes.width "100%", SvgAttributes.viewBox "0 0 1200 800" ]
-            [ viewTree model.tree 600 30 0
+            [ Svg.Keyed.node "g" [] <| viewTree model.tree 600 30 0
             ]
         ]
 
